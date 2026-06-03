@@ -3,6 +3,7 @@ import {
     callImageGenerate,
     callImageUpscale,
     callImageDirector,
+    callEncodeVibe,
 } from "../src/client";
 import type { ImageEndpointConfig } from "../src/types";
 
@@ -26,9 +27,8 @@ describe("callImageGenerate", () => {
                 { ...mockConfig, baseUrl: "https://nonexistent.example.com" },
                 { payload: {} },
                 {
-                    fetch: () => {
-                        throw new TypeError("Failed to fetch");
-                    },
+                    fetch: () =>
+                        Promise.reject(new TypeError("Failed to fetch")),
                 }
             )
         ).rejects.toThrow("Failed to fetch");
@@ -47,7 +47,7 @@ describe("callImageGenerate", () => {
             callImageGenerate(
                 mockConfig,
                 { payload: {} },
-                { fetch: mockFetch as unknown as typeof globalThis.fetch }
+                { fetch: mockFetch as typeof globalThis.fetch }
             )
         ).rejects.toThrow("Upstream returned 401");
     });
@@ -63,7 +63,7 @@ describe("callImageGenerate", () => {
         const result = await callImageGenerate(
             mockConfig,
             { payload: {} },
-            { fetch: mockFetch as unknown as typeof globalThis.fetch }
+            { fetch: mockFetch as typeof globalThis.fetch }
         );
         expect(result.kind).toBe("json");
         expect(result.raw).toEqual({ foo: "bar" });
@@ -85,7 +85,7 @@ describe("callImageUpscale", () => {
         await callImageUpscale(
             mockConfig,
             { payload: {} },
-            { fetch: mockFetch as unknown as typeof globalThis.fetch }
+            { fetch: mockFetch as typeof globalThis.fetch }
         );
         expect(calledUrl).toContain("/ai/upscale");
     });
@@ -106,8 +106,33 @@ describe("callImageDirector", () => {
         await callImageDirector(
             mockConfig,
             { payload: {} },
-            { fetch: mockFetch as unknown as typeof globalThis.fetch }
+            { fetch: mockFetch as typeof globalThis.fetch }
         );
         expect(calledUrl).toContain("/ai/augment-image");
+    });
+});
+
+describe("callEncodeVibe", () => {
+    it("calls encode-vibe endpoint", async () => {
+        let calledUrl = "";
+        const mockFetch = (url: string) => {
+            calledUrl = url;
+            return Promise.resolve(
+                new Response("{}", {
+                    status: 200,
+                    headers: { "content-type": "application/json" },
+                })
+            );
+        };
+        await callEncodeVibe(
+            mockConfig,
+            {
+                image: "base64...",
+                model: "nai-diffusion-4-5-full",
+                information_extracted: 0.5,
+            },
+            { fetch: mockFetch as typeof globalThis.fetch }
+        );
+        expect(calledUrl).toContain("/ai/encode-vibe");
     });
 });

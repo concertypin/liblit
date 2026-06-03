@@ -10,13 +10,40 @@ export interface ImageEndpointConfig {
     timeoutMs?: number;
 }
 
-// ── Preset / generation parameters ──
+// ── Upstream response types ──
+export interface ImageEntry {
+    dataUrl?: string;
+    url?: string;
+    name?: string;
+    mime?: string;
+}
+
+export interface UpstreamResult {
+    kind: "json" | "zip" | "image" | "binary";
+    contentType: string;
+    images: ImageEntry[];
+    raw?: unknown;
+    metadata?: Record<string, unknown>;
+    text?: string;
+    headers?: Record<string, string>;
+}
+
+// ── Image format enum ──
+export type ImageFormat = "png" | "webp";
+
+// ── Streaming type ──
+export type StreamingType = "msgpack" | "sse";
+
+// ── Generate parameters (maps to RequestParameters in OpenAPI) ──
 export interface GenerateParams {
+    /** Image model (e.g. nai-diffusion-4-5-full) */
     model: string;
-    action: string;
+    action: "generate" | "img2img" | "infill";
     width: number;
     height: number;
+    /** Number of samples (1-16) */
     samples: number;
+    /** Seed (0 = random) */
     seed: number;
     steps: number;
     scale: number;
@@ -42,12 +69,18 @@ export interface GenerateParams {
     useOrder: boolean;
     prompt: string;
     negativePrompt: string;
+    /** Input image (base64) — required for img2img / infill */
+    image?: string;
+    /** Inpaint mask (base64) */
+    mask?: string;
+    /** Image format for response */
+    imageFormat?: ImageFormat;
+    /** Streaming type */
+    stream?: StreamingType;
     /** Optional character prompts for region control */
     characters?: CharacterPrompt[];
     /** Extra parameters forwarded to the API */
     extraParameters?: Record<string, unknown>;
-    /** Override the endpoint path for this request */
-    endpointOverride?: string;
 }
 
 export interface CharacterPrompt {
@@ -58,20 +91,46 @@ export interface CharacterPrompt {
     y: number;
 }
 
-// ── Upstream response types ──
-export interface ImageEntry {
-    dataUrl?: string;
-    url?: string;
-    name?: string;
-    mime?: string;
+// ── Augment image (Director Tools) ──
+export interface AugmentImageRequest {
+    /** Director tool type */
+    req_type: string;
+    /** Base64-encoded input image */
+    image: string;
+    /** Text prompt */
+    prompt?: string;
+    width?: number;
+    height?: number;
+    /** Defry amount (despeckle) */
+    defry?: number;
 }
 
-export interface UpstreamResult {
-    kind: "json" | "zip" | "image" | "binary";
-    contentType: string;
-    images: ImageEntry[];
-    raw?: unknown;
-    metadata?: Record<string, unknown>;
-    text?: string;
-    headers?: Record<string, string>;
+// ── Encode vibe ──
+export interface EncodeVibeRequest {
+    /** Base64-encoded image */
+    image: string;
+    /** Model */
+    model: string;
+    /** How much information to extract (0-1) */
+    information_extracted: number;
+    /** Whether to crop image to mask bounds */
+    crop_to_mask?: boolean;
+    /** Focus seed */
+    focus_seed?: number;
+    /** Information extraction seed */
+    info_extract_seed?: number;
+    /** Base64-encoded mask */
+    mask?: string;
 }
+
+// ── Preset / full params (composite shorthand) ──
+export type PresetData = GenerateParams;
+
+export type Preset = {
+    id: string;
+    name: string;
+    description: string;
+    createdAt: string;
+    updatedAt: string;
+    data: PresetData;
+};
