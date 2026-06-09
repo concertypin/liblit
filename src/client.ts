@@ -70,8 +70,11 @@ async function readResponseBody(
     return result;
 }
 
-// ── Core POST helper ──
-
+/**
+ * Low-level HTTP POST to the NovelAI API.
+ * Handles auth headers, timeout, abort signals, and response normalization.
+ * Used internally by all public API functions; exported for custom endpoints.
+ */
 export async function postJson(
     url: string,
     payload: unknown,

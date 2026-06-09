@@ -21,6 +21,10 @@ export interface ResolvedConfig {
     timeoutMs: number;
 }
 
+/**
+ * Resolve a `NovelAIConfig` to a complete config with defaults.
+ * Token falls back to `import.meta.env.NOVELAI_KEY` when not provided.
+ */
 export function resolveConfig(config: NovelAIConfig): ResolvedConfig {
     const token =
         config.token ??
@@ -109,6 +113,11 @@ function encodeImageField(value: unknown): unknown {
 
 // ── Transform generate input → API request body ──
 
+/**
+ * Transform a user-friendly `AnyGenerateInput` to the NovelAI API request body.
+ * Handles camelCase→snake_case mapping, Uint8Array→base64 encoding,
+ * and default value injection.
+ */
 export function transformGenerate(
     input: AnyGenerateInput
 ): Record<string, unknown> {
@@ -179,6 +188,7 @@ export function transformGenerate(
 
 // ── Transform upscale input → API request body ──
 
+/** Transform `UpscaleInput` to the API request body */
 export function transformUpscale(input: UpscaleInput): Record<string, unknown> {
     const body: Record<string, unknown> = {
         image: encodeBase64(input.image),
@@ -190,6 +200,7 @@ export function transformUpscale(input: UpscaleInput): Record<string, unknown> {
 
 // ── Transform augment input → API request body ──
 
+/** Transform `AugmentInput` to the API request body */
 export function transformAugment(input: AugmentInput): Record<string, unknown> {
     const body: Record<string, unknown> = {
         req_type: input.reqType,
@@ -203,7 +214,7 @@ export function transformAugment(input: AugmentInput): Record<string, unknown> {
 }
 
 // ── Transform encode-vibe input → API request body ──
-
+/** Transform `EncodeVibeInput` to the API request body */
 export function transformEncodeVibe(
     input: EncodeVibeInput
 ): Record<string, unknown> {
@@ -222,6 +233,8 @@ export function transformEncodeVibe(
 
 // ── Random seed generation ──
 
+/** Generate a cryptographically random seed (32-bit unsigned integer). */
+/** Generate a cryptographically random 32-bit unsigned integer. */
 export function randomSeed(): number {
     const arr = new Uint32Array(1);
     crypto.getRandomValues(arr);

@@ -17,10 +17,15 @@ export type StreamingType = "msgpack" | "sse";
 
 // ── Character prompt for region control ──
 export interface CharacterPrompt {
+    /** Character identifier */
     id: string;
+    /** Positive prompt for this character */
     prompt: string;
+    /** Negative prompt for this character (maps to `negative_prompt` in API) */
     negative: string;
+    /** X coordinate for region placement */
     x: number;
+    /** Y coordinate for region placement */
     y: number;
 }
 
@@ -59,18 +64,31 @@ export interface GenerateInputBase {
     strength?: number;
     /** Noise amount (0-1, default 0) */
     noise?: number;
+    /** Enable quality toggle (default true) */
     qualityToggle?: boolean;
+    /** Enable auto SMEA (default false) */
     autoSmea?: boolean;
+    /** Enable SM (Smea) (default false) */
     sm?: boolean;
+    /** Enable SM Dynamic thresholding (default false) */
     smDyn?: boolean;
+    /** Enable decrisper (default false) */
     decrisper?: boolean;
+    /** Prefer brownian noise (default false) */
     preferBrownian?: boolean;
+    /** Add original image to output (default false) */
     addOriginal?: boolean;
+    /** Use legacy v3 model path (default false) */
     legacyV3?: boolean;
+    /** Use legacy UC (default false) */
     legacyUc?: boolean;
+    /** Enable variety plus (default false) */
     varietyPlus?: boolean;
+    /** Normalize vibes (default true) */
     normalizeVibes?: boolean;
+    /** Use coordinates for region control (default false) */
     useCoords?: boolean;
+    /** Use ordering for region control (default false) */
     useOrder?: boolean;
     /** Image format for the response */
     imageFormat?: ImageFormat;
