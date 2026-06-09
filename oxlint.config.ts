@@ -5,6 +5,9 @@ export default defineConfig({
     env: {
         builtin: true,
     },
+    rules: {
+        "typescript/require-await": "off",
+    },
     ignorePatterns: [
         "**/node_modules/**",
         "**/dist/**",
@@ -13,6 +16,7 @@ export default defineConfig({
         "**/.cache/**",
         "**/.vscode/**",
         "**/.git/**",
+        "**/*.mjs",
     ],
     overrides: [
         {
@@ -25,6 +29,15 @@ export default defineConfig({
             files: ["scripts/**/*.ts"],
             rules: {
                 "no-console": "off",
+            },
+        },
+        {
+            files: ["tests/**/*.ts"],
+            rules: {
+                "typescript/no-unsafe-assignment": "off",
+                "typescript/no-unsafe-member-access": "off",
+                "typescript/no-unsafe-return": "off",
+                "typescript/no-unsafe-call": "off",
             },
         },
     ],

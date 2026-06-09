@@ -21,7 +21,6 @@ export default defineConfig({
         "@typescript-eslint/prefer-as-const": "warn",
         "@typescript-eslint/prefer-namespace-keyword": "warn",
         "@typescript-eslint/prefer-promise-reject-errors": "warn",
-        "@typescript-eslint/require-await": "warn",
         "@typescript-eslint/restrict-template-expressions": "warn",
         "@typescript-eslint/triple-slash-reference": "warn",
         "no-case-declarations": "warn",

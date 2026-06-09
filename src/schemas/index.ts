@@ -1,10 +1,14 @@
-export { ImageEndpointConfigSchema } from "./ImageEndpointConfigSchema";
-export { ImageRequestBodySchema } from "./ImageRequestBodySchema";
+export { NovelAIConfigSchema } from "./ImageEndpointConfigSchema";
 export {
-    GenerateParamsSchema,
+    GenerateInputSchema,
+    GenerateActionSchema,
+    Img2ImgActionSchema,
+    InfillActionSchema,
     ImageFormatSchema,
     StreamingTypeSchema,
-    AugmentImageRequestSchema,
-    EncodeVibeRequestSchema,
+    CharacterPromptSchema,
+    UpscaleInputSchema,
+    AugmentInputSchema,
+    EncodeVibeInputSchema,
 } from "./GenerateParamsSchema";
 export type { GenerateParamsInput } from "./GenerateParamsSchema";

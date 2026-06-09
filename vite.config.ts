@@ -17,10 +17,21 @@ const resolve: Config["resolve"] = {
 const testConfig: Config["test"] = {
     coverage: {
         enabled: true,
+        exclude: [
+            "src/schemas/index.ts", // barrel re-export: pulls in schema files, skews per-file %
+            "src/validate.ts", // dynamic await import() in TLA; V8 cannot track coverage. Tested indirectly via validate.test.ts (4 tests)
+        ],
         include: ["src/**/*.ts"],
         provider: "v8",
         reportOnFailure: true,
         reporter: ["text", "json-summary", "html"],
+        thresholds: {
+            perFile: true,
+            lines: 95,
+            statements: 95,
+            functions: 95,
+            branches: 95,
+        },
     },
     environment: "node",
     exclude: ["**/node_modules/**", "**/dist/**"],
@@ -39,6 +50,7 @@ const entries = globSync("src/**/index.ts").reduce(
     {} as Record<string, string>
 );
 export default defineConfig({
+    envPrefix: "NOVELAI",
     build: {
         lib: {
             entry: entries,

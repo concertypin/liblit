@@ -1,46 +1,43 @@
 import type {
-    ImageEndpointConfig,
-    UpstreamResult,
-    EncodeVibeRequest,
+    NovelAIConfig,
+    AnyGenerateInput,
+    UpscaleInput,
+    AugmentInput,
+    EncodeVibeInput,
+    GenerationResult,
 } from "./types";
 import { toFullUrl, authHeader, normalizeUpstream } from "./utils";
 import { MAX_RESPONSE_BYTES } from "./constants";
+import {
+    validateConfig,
+    validateGenerateInput,
+    validateUpscaleInput,
+    validateAugmentInput,
+    validateEncodeVibe,
+} from "./validate";
+import {
+    resolveConfig,
+    transformGenerate,
+    transformUpscale,
+    transformAugment,
+    transformEncodeVibe,
+} from "./transform";
 
-export interface ImageRequestBody {
-    payload?: unknown;
-    endpointPath?: string;
-    baseUrl?: string;
-    token?: string;
-    authScheme?: string;
-    timeoutMs?: number;
-}
+// ── Public option types ──
 
 export interface RequestOptions {
     fetch?: typeof globalThis.fetch;
     signal?: AbortSignal;
 }
 
+// ── API endpoint paths ──
+
 export const DEFAULT_GENERATE_PATH = "/ai/generate-image";
 export const DEFAULT_UPSCALE_PATH = "/ai/upscale";
 export const DEFAULT_DIRECTOR_PATH = "/ai/augment-image";
 export const DEFAULT_ENCODE_VIBE_PATH = "/ai/encode-vibe";
 
-function resolveConfig(
-    body: ImageRequestBody,
-    config: ImageEndpointConfig,
-    defaultPath: string
-) {
-    return {
-        url: toFullUrl(
-            body.baseUrl || config.baseUrl,
-            body.endpointPath || defaultPath
-        ),
-        token: body.token !== undefined ? body.token : config.token,
-        authScheme: body.authScheme || config.authScheme || "Bearer",
-        timeoutMs: body.timeoutMs ?? config.timeoutMs ?? 120_000,
-        payload: body.payload ?? {},
-    };
-}
+// ── Internal: read response body as Uint8Array ──
 
 async function readResponseBody(
     response: Response,
@@ -73,24 +70,7 @@ async function readResponseBody(
     return result;
 }
 
-function anySignal(signals: AbortSignal[]): AbortSignal {
-    const controller = new AbortController();
-    const cleanup = () => controller.abort();
-    for (const signal of signals) {
-        if (signal.aborted) {
-            controller.abort(signal.reason);
-            return controller.signal;
-        }
-        signal.addEventListener(
-            "abort",
-            () => controller.abort(signal.reason),
-            { once: true }
-        );
-    }
-    // Also clean up when the returned signal itself aborts
-    controller.signal.addEventListener("abort", cleanup, { once: true });
-    return controller.signal;
-}
+// ── Core POST helper ──
 
 export async function postJson(
     url: string,
@@ -98,8 +78,9 @@ export async function postJson(
     headers: Record<string, string>,
     timeoutMs: number,
     options?: RequestOptions
-): Promise<UpstreamResult> {
+): Promise<GenerationResult> {
     const controller = new AbortController();
+    /* v8 ignore next -- timer never fires with mock responses */
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     const fetchFn = options?.fetch ?? globalThis.fetch;
 
@@ -113,7 +94,7 @@ export async function postJson(
             },
             body: JSON.stringify(payload),
             signal: options?.signal
-                ? anySignal([controller.signal, options.signal])
+                ? AbortSignal.any([controller.signal, options.signal])
                 : controller.signal,
         });
 
@@ -148,70 +129,104 @@ export async function postJson(
     }
 }
 
-/** Call NovelAI image generation API. */
-export async function callImageGenerate(
-    config: ImageEndpointConfig,
-    body: ImageRequestBody = {},
+// ── New API ──
+
+/**
+ * Generate images via NovelAI.
+ * @param input - Generation parameters (action, model, prompt, etc.)
+ * @param config - Optional client configuration (token, baseUrl, timeout)
+ * @param options - Optional fetch/signal overrides
+ */
+export async function generate(
+    input: AnyGenerateInput,
+    config?: NovelAIConfig,
     options?: RequestOptions
-): Promise<UpstreamResult> {
-    const resolved = resolveConfig(body, config, DEFAULT_GENERATE_PATH);
-    const headers = authHeader(resolved.token, resolved.authScheme);
+): Promise<GenerationResult> {
+    validateGenerateInput(input);
+    if (config) validateConfig(config);
+    const resolved = resolveConfig(config ?? {});
+    const body = transformGenerate(input);
+    const headers = authHeader(resolved.token);
     return postJson(
-        resolved.url,
-        resolved.payload,
+        toFullUrl(resolved.baseUrl, DEFAULT_GENERATE_PATH),
+        body,
         headers,
         resolved.timeoutMs,
         options
     );
 }
 
-/** Call NovelAI image upscale API. */
-export async function callImageUpscale(
-    config: ImageEndpointConfig,
-    body: ImageRequestBody = {},
+/**
+ * Upscale an image via NovelAI.
+ * @param input - Upscale parameters (image, scale, model)
+ * @param config - Optional client configuration
+ * @param options - Optional fetch/signal overrides
+ */
+export async function upscale(
+    input: UpscaleInput,
+    config?: NovelAIConfig,
     options?: RequestOptions
-): Promise<UpstreamResult> {
-    const resolved = resolveConfig(body, config, DEFAULT_UPSCALE_PATH);
-    const headers = authHeader(resolved.token, resolved.authScheme);
+): Promise<GenerationResult> {
+    validateUpscaleInput(input);
+    if (config) validateConfig(config);
+    const resolved = resolveConfig(config ?? {});
+    const body = transformUpscale(input);
+    const headers = authHeader(resolved.token);
     return postJson(
-        resolved.url,
-        resolved.payload,
+        toFullUrl(resolved.baseUrl, DEFAULT_UPSCALE_PATH),
+        body,
         headers,
         resolved.timeoutMs,
         options
     );
 }
 
-/** Call NovelAI director/augment API. */
-export async function callImageDirector(
-    config: ImageEndpointConfig,
-    body: ImageRequestBody = {},
+/**
+ * Augment an image via NovelAI Director Tools.
+ * @param input - Augment parameters (reqType, image, prompt, etc.)
+ * @param config - Optional client configuration
+ * @param options - Optional fetch/signal overrides
+ */
+export async function augment(
+    input: AugmentInput,
+    config?: NovelAIConfig,
     options?: RequestOptions
-): Promise<UpstreamResult> {
-    const resolved = resolveConfig(body, config, DEFAULT_DIRECTOR_PATH);
-    const headers = authHeader(resolved.token, resolved.authScheme);
+): Promise<GenerationResult> {
+    validateAugmentInput(input);
+    if (config) validateConfig(config);
+    const resolved = resolveConfig(config ?? {});
+    const body = transformAugment(input);
+    const headers = authHeader(resolved.token);
     return postJson(
-        resolved.url,
-        resolved.payload,
+        toFullUrl(resolved.baseUrl, DEFAULT_DIRECTOR_PATH),
+        body,
         headers,
         resolved.timeoutMs,
         options
     );
 }
 
-/** Call NovelAI encode-vibe API. */
-export async function callEncodeVibe(
-    config: ImageEndpointConfig,
-    payload: EncodeVibeRequest,
+/**
+ * Encode an image to a NovelAI vibe.
+ * @param input - Encode-vibe parameters (image, model, informationExtracted)
+ * @param config - Optional client configuration
+ * @param options - Optional fetch/signal overrides
+ */
+export async function encodeVibe(
+    input: EncodeVibeInput,
+    config?: NovelAIConfig,
     options?: RequestOptions
-): Promise<UpstreamResult> {
-    const url = toFullUrl(config.baseUrl, DEFAULT_ENCODE_VIBE_PATH);
-    const headers = authHeader(config.token, config.authScheme);
+): Promise<GenerationResult> {
+    validateEncodeVibe(input);
+    if (config) validateConfig(config);
+    const resolved = resolveConfig(config ?? {});
+    const body = transformEncodeVibe(input);
+    const headers = authHeader(resolved.token);
     return postJson(
-        url,
-        payload,
+        toFullUrl(resolved.baseUrl, DEFAULT_ENCODE_VIBE_PATH),
+        body,
         headers,
-        config.timeoutMs ?? 120_000,
+        resolved.timeoutMs,
         options
     );
 }

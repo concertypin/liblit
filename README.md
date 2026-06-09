@@ -1,25 +1,95 @@
-> [!NOTE]
-> This is template repository for library development using TypeScript and Vite. Check out [website template](https://github.com/templecon/template-typescript-vite-web) for web application development.
+# liblit — NovelAI Image API Client
 
-# How to use
+[![CI](https://github.com/concertypin/liblit/actions/workflows/ci.yml/badge.svg)](https://github.com/concertypin/liblit/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@concertypin/liblit)](https://www.npmjs.com/package/@concertypin/liblit)
+[![License](https://img.shields.io/github/license/concertypin/liblit)](LICENSE)
 
+**liblit** is a lightweight TypeScript client for the [NovelAI](https://novelai.net) Image Generation API.  
+Uint8Array-native, camelCase input, discriminated unions, zero production dependencies.
+
+> Zod schemas are dynamically imported in dev builds and fully tree-shaken in production.
+
+---
+
+## Installation
+
+```bash
+pnpm add liblit
 ```
-git clone https://github.com/templecon/template-typescript-vite
+
+## Quick Start
+
+```ts
+import { generate } from "liblit";
+
+const result = await generate({
+    action: "generate",
+    model: "nai-diffusion-4-5-full",
+    prompt: "1girl, solo, detailed face",
+    steps: 28,
+    scale: 5,
+});
+
+// result.images[0].bytes → Uint8Array
 ```
 
-## Requirements
+Token is read from `import.meta.env.NOVELAI_KEY` automatically when omitted.
 
-Node.js version 22.18.0 or higher is recommended, since it has basic TypeScript support, which is used on eslint.config.ts.
-Older versions will:
+## All Endpoints
 
-- Older than v22.6.0: Not work, migrate Node version or eslint.config.ts to .js.
-- Between v22.6.0 and v22.18.0: Work, but require `--experimental-transform-types`(since v22.7.0) or `--experimental-strip-types`(since v22.6.0) flag on `NODE_OPTIONS` environment variable.
-- v22.18.0 or higher: Work without flags.
+| Function       | API Path             | Description                    |
+| -------------- | -------------------- | ------------------------------ |
+| `generate()`   | `/ai/generate-image` | Text-to-image, img2img, infill |
+| `upscale()`    | `/ai/upscale`        | Image upscaling                |
+| `augment()`    | `/ai/augment-image`  | Director Tools                 |
+| `encodeVibe()` | `/ai/encode-vibe`    | Vibe encoding                  |
 
-## Conventions and Rules
+All functions accept an optional `NovelAIConfig` (token, baseUrl, timeoutMs) as the second argument and optional `RequestOptions` (custom fetch, signal) as the third.
 
-This project follows specific conventions and rules for code style, data validation, testing, and more. Please refer to the following documentation for detailed guidelines.
+## Features
 
-- [Typescript](./docs/rules/typescript.md)
-- [Typescript Schema Validation](./docs/rules/typescript_schema.md)
-- [Testing Guidelines](./docs/rules/tests.md)
+- **Uint8Array everywhere** — input images and response images, no base64 strings in user code
+- **camelCase input** — auto-converted to the API's snake_case internally
+- **Discriminated unions** — type-safe required fields per action (`generate` vs `img2img` vs `infill`)
+- **Smart defaults** — width 1024, steps 28, scale 5, sampler `k_euler_ancestral`, etc.
+- **Env-based token** — falls back to `import.meta.env.NOVELAI_KEY`
+- **Dev-only validation** — Zod schemas validate inputs during development
+- **Timeout & abort** — built-in timeout with configurable `AbortSignal`
+- **Response normalization** — JSON, ZIP (images + metadata), raw images, binary
+- **Zero production deps** — Zod is tree-shaken from the production bundle
+
+## Documentation
+
+- [Usage Guide](docs/usage.md) — configuration, generation, response handling
+- [API Reference](docs/api.md) — full type and function documentation
+
+## Development
+
+```bash
+pnpm dev          # Watch mode build
+pnpm build        # Production build (ESM → dist/)
+pnpm test         # Run tests with coverage
+pnpm lint         # Oxlint type-aware linting
+pnpm format       # Prettier
+pnpm check        # format + lint + test (pre-push)
+```
+
+Requires Node.js ≥22.18.0 and pnpm.
+
+## Publishing
+
+Published to npm as `@concertypin/liblit` via GitHub Actions.
+
+1. Update version in `package.json`
+2. Tag:
+
+    ```bash
+    git tag v0.2.0
+    git push origin v0.2.0
+    ```
+
+3. The [Publish workflow](.github/workflows/publish.yml) handles lint → test → build → publish with npm OIDC provenance.
+
+## License
+
+MIT

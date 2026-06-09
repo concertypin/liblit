@@ -1,14 +1,13 @@
-export {
-    callImageGenerate,
-    callImageUpscale,
-    callImageDirector,
-    callEncodeVibe,
-    postJson,
-} from "./client";
-export type { ImageRequestBody, RequestOptions } from "./client";
+// ── Client API ──
+export { generate, upscale, augment, encodeVibe, postJson } from "./client";
+export type { RequestOptions } from "./client";
+
+// ── Utility functions ──
 export {
     toFullUrl,
     authHeader,
+    encodeBase64,
+    decodeBase64,
     bytesToDataUrl,
     inferMime,
     inferImageMimeFromBytes,
@@ -18,21 +17,52 @@ export {
     normalizeZip,
     timingSafeEqual,
 } from "./utils";
+
+// ── Transform utilities ──
+export {
+    resolveConfig,
+    transformGenerate,
+    transformUpscale,
+    transformAugment,
+    transformEncodeVibe,
+    randomSeed,
+} from "./transform";
+export type { ResolvedConfig } from "./transform";
+
+// ── Type definitions ──
 export type {
-    ImageEndpointConfig,
+    NovelAIConfig,
+    GenerateInputBase,
+    GenerateInput,
+    Img2ImgInput,
+    InfillInput,
+    AnyGenerateInput,
+    UpscaleInput,
+    AugmentInput,
+    EncodeVibeInput,
     ImageFormat,
     StreamingType,
-    GenerateParams,
     CharacterPrompt,
-    ImageEntry,
-    UpstreamResult,
-    AugmentImageRequest,
-    EncodeVibeRequest,
+    ImageResult,
+    GenerationResult,
+    PresetData,
+    Preset,
 } from "./types";
-export { MAX_RESPONSE_BYTES } from "./constants";
+
+// ── Constants ──
+export { MAX_RESPONSE_BYTES, DEFAULT_BASE_URL } from "./constants";
+
+// ── Zod schemas (dev-only validation) ──
 export {
-    ImageEndpointConfigSchema,
-    ImageRequestBodySchema,
-    GenerateParamsSchema,
+    NovelAIConfigSchema,
+    GenerateInputSchema,
+    GenerateActionSchema,
+    Img2ImgActionSchema,
+    InfillActionSchema,
+    UpscaleInputSchema,
+    AugmentInputSchema,
+    EncodeVibeInputSchema,
+    ImageFormatSchema,
+    StreamingTypeSchema,
+    CharacterPromptSchema,
 } from "./schemas";
-export type { GenerateParamsInput } from "./schemas";

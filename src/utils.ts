@@ -1,5 +1,5 @@
 import { unzipSync } from "fflate";
-import type { ImageEntry, UpstreamResult } from "./types";
+import type { ImageResult, GenerationResult } from "./types";
 
 // ── URL helpers ──
 
@@ -26,24 +26,27 @@ export function authHeader(
 
 // ── Binary helpers ──
 
-function encodeBase64(bytes: Uint8Array): string {
-    const chars =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let result = "";
-    const len = bytes.length;
-    for (let i = 0; i < len; i += 3) {
-        const b0 = bytes[i]!;
-        const b1 = i + 1 < len ? bytes[i + 1]! : 0;
-        const b2 = i + 2 < len ? bytes[i + 2]! : 0;
-        result += chars[b0 >> 2];
-        result += chars[((b0 & 3) << 4) | (b1 >> 4)];
-        result += chars[((b1 & 15) << 2) | (b2 >> 6)];
-        result += chars[b2 & 63];
+export function encodeBase64(bytes: Uint8Array): string {
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]!);
     }
-    const pad = bytes.length % 3;
-    if (pad === 1) result = `${result.slice(0, -2)}==`;
-    else if (pad === 2) result = `${result.slice(0, -1)}=`;
-    return result;
+    return btoa(binary);
+}
+
+export function decodeBase64(str: string): Uint8Array {
+    // atob() requires strictly valid base64 — strip existing padding, fix length
+    const body = str.replace(/=+$/, "");
+    const rest = body.length % 4;
+    // remainder 1 means non-integer bytes (invalid base64) — drop the extraneous char
+    const clean = rest === 1 ? body.slice(0, -1) : body;
+    const padded = rest === 2 ? `${clean}==` : rest === 3 ? `${clean}=` : clean;
+    const binary = atob(padded);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
 }
 
 export function bytesToDataUrl(bytes: Uint8Array, mime = "image/png"): string {
@@ -103,27 +106,35 @@ export function looksLikeZip(bytes: Uint8Array, contentType: string): boolean {
     return /filename=.*\.zip/i.test(contentType);
 }
 
+// ── Parse base64 data URL ──
+
+function parseDataUrl(dataUrl: string): { mime: string; bytes: Uint8Array } {
+    const comma = dataUrl.indexOf(",");
+    const header = comma > 0 ? dataUrl.slice(0, comma) : "";
+    const mime = header?.match(/data:([^;]+)/)?.[1] ?? "image/png";
+    const b64 = comma > 0 ? dataUrl.slice(comma + 1) : dataUrl;
+    return { mime, bytes: decodeBase64(b64) };
+}
+
 // ── Image collection from JSON ──
 
 export function collectImagesFromJson(
     value: unknown,
-    images: ImageEntry[] = []
-): ImageEntry[] {
+    images: ImageResult[] = []
+): ImageResult[] {
     if (!value || images.length >= 64) return images;
     if (typeof value === "string") {
         if (value.startsWith("data:image/")) {
-            const mime = value.slice(5, value.indexOf(";"));
-            images.push({ dataUrl: value, mime });
+            const { mime, bytes } = parseDataUrl(value);
+            images.push({ bytes, mime });
         } else if (
             /^[A-Za-z0-9+/=]{100,}$/.test(value) &&
             value.length % 4 === 0
         ) {
-            images.push({
-                dataUrl: `data:image/png;base64,${value}`,
-                mime: "image/png",
-            });
+            const bytes = decodeBase64(value);
+            images.push({ bytes, mime: "image/png" });
         } else if (/^https?:\/\//i.test(value)) {
-            images.push({ url: value });
+            images.push({ url: value, mime: "image/png" });
         }
         return images;
     }
@@ -134,10 +145,8 @@ export function collectImagesFromJson(
     if (typeof value === "object" && value !== null) {
         const obj = value as Record<string, unknown>;
         if (typeof obj.b64_json === "string") {
-            images.push({
-                dataUrl: `data:image/png;base64,${obj.b64_json}`,
-                mime: "image/png",
-            });
+            const bytes = decodeBase64(obj.b64_json);
+            images.push({ bytes, mime: "image/png" });
         }
         if (typeof obj.image === "string")
             collectImagesFromJson(obj.image, images);
@@ -153,19 +162,16 @@ export function collectImagesFromJson(
 
 export function normalizeZip(
     bytes: Uint8Array,
-    contentType: string
-): UpstreamResult {
+    contentType: string,
+    headers?: Record<string, string>
+): GenerationResult {
     const files = unzipSync(bytes);
-    const images: ImageEntry[] = [];
+    const images: ImageResult[] = [];
     const metadata: Record<string, unknown> = {};
     for (const [name, data] of Object.entries(files)) {
         const mime = inferMime(name);
         if (mime.startsWith("image/")) {
-            images.push({
-                name,
-                mime,
-                dataUrl: bytesToDataUrl(data, mime),
-            });
+            images.push({ name, mime, bytes: data });
         } else if (name.endsWith(".json")) {
             try {
                 metadata[name] = JSON.parse(new TextDecoder().decode(data));
@@ -176,14 +182,20 @@ export function normalizeZip(
             metadata[name] = new TextDecoder().decode(data);
         }
     }
-    return { kind: "zip", contentType, images, metadata };
+    return {
+        kind: "zip",
+        contentType,
+        images,
+        metadata,
+        headers: headers ?? {},
+    };
 }
 
 export function normalizeUpstream(
     bytes: Uint8Array,
     contentType: string,
     headers?: Record<string, string>
-): UpstreamResult {
+): GenerationResult {
     const lowerType = contentType.toLowerCase();
 
     if (lowerType.includes("application/json") || lowerType.includes("+json")) {
@@ -196,11 +208,12 @@ export function normalizeUpstream(
             contentType,
             images: collectImagesFromJson(json),
             raw: json,
+            headers: headers ?? {},
         };
     }
 
     if (lowerType.includes("zip") || looksLikeZip(bytes, contentType)) {
-        return normalizeZip(bytes, contentType);
+        return normalizeZip(bytes, contentType, headers);
     }
 
     const inferredImageMime = inferImageMimeFromBytes(bytes);
@@ -211,7 +224,8 @@ export function normalizeUpstream(
         return {
             kind: "image",
             contentType,
-            images: [{ mime, dataUrl: bytesToDataUrl(bytes, mime) }],
+            images: [{ bytes, mime: mime! }],
+            headers: headers ?? {},
         };
     }
 
