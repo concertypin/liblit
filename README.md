@@ -4,6 +4,10 @@
 [![npm](https://img.shields.io/npm/v/@concertypin/liblit)](https://www.npmjs.com/package/@concertypin/liblit)
 [![License](https://img.shields.io/github/license/concertypin/liblit)](LICENSE)
 
+**⚠️ Implementation dropped** — the author's NovelAI subscription has ended, so active development is on hold. The library compiles and tests pass, but there's no active maintainer. Feel free to fork.
+
+---
+
 **liblit** is a lightweight TypeScript client for the [NovelAI](https://novelai.net) Image Generation API.  
 Uint8Array-native, camelCase input, discriminated unions, zero production dependencies.
 
