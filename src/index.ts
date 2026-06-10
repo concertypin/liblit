@@ -30,6 +30,7 @@ export {
 export type { ResolvedConfig } from "./transform";
 
 // ── Type definitions ──
+// ── Type definitions ──
 export type {
     NovelAIConfig,
     GenerateInputBase,
@@ -47,7 +48,13 @@ export type {
     GenerationResult,
     PresetData,
     Preset,
+    ModelId,
+    SamplerName,
+    NoiseScheduleName,
 } from "./types";
+
+// ── Named constants for autocomplete ──
+export { MODELS, SAMPLERS, NOISE_SCHEDULES } from "./types";
 
 // ── Constants ──
 export { MAX_RESPONSE_BYTES, DEFAULT_BASE_URL } from "./constants";

@@ -1,11 +1,20 @@
 // ── NovelAI API Client Configuration ──
 
 export interface NovelAIConfig {
-    /** NovelAI API token. Defaults to `import.meta.env.NOVELAI_KEY` when available. */
+    /**
+     * NovelAI API token.
+     * @default import.meta.env.NOVELAI_KEY
+     */
     token?: string;
-    /** Base URL for the API (default "https://image.novelai.net"). */
+    /**
+     * Base URL for the NovelAI Image API.
+     * @default "https://image.novelai.net"
+     */
     baseUrl?: string;
-    /** Request timeout in milliseconds (default 120_000). */
+    /**
+     * Request timeout in milliseconds.
+     * @default 120000
+     */
     timeoutMs?: number;
 }
 
@@ -15,13 +24,57 @@ export type ImageFormat = "png" | "webp";
 // ── Streaming type ──
 export type StreamingType = "msgpack" | "sse";
 
+// ── Known model identifiers (may be extended by NovelAI) ──
+/** @see {@link MODELS} for well-known model IDs. */
+export type ModelId =
+    | `nai-diffusion-${string}`
+    | `safe-diffusion-${string}`
+    | (string & {});
+
+/** Well-known NovelAI model identifiers. */
+export const MODELS = {
+    V4_5_FULL: "nai-diffusion-4-5-full",
+    V4_5_CURATED: "nai-diffusion-4-5-curated",
+    V3_FULL: "nai-diffusion-3-full",
+    V3_CURATED: "nai-diffusion-3-curated",
+} as const;
+
+/** Known sampler algorithms (NovelAI may support more). */
+export const SAMPLERS = [
+    "k_euler_ancestral",
+    "k_euler",
+    "k_dpmpp_2m",
+    "k_dpmpp_sde",
+    "k_dpmpp_2s_ancestral",
+    "ddim",
+] as const;
+
+/** @see {@link SAMPLERS} for well-known sampler names. */
+export type SamplerName = (typeof SAMPLERS)[number] | (string & {});
+
+/** Known noise schedules (NovelAI may support more). */
+export const NOISE_SCHEDULES = [
+    "native",
+    "karras",
+    "exponential",
+    "polyexponential",
+] as const;
+
+/** @see {@link NOISE_SCHEDULES} for well-known schedule names. */
+export type NoiseScheduleName =
+    | (typeof NOISE_SCHEDULES)[number]
+    | (string & {});
+
 // ── Character prompt for region control ──
 export interface CharacterPrompt {
     /** Character identifier */
     id: string;
     /** Positive prompt for this character */
     prompt: string;
-    /** Negative prompt for this character (maps to `negative_prompt` in API) */
+    /**
+     * Negative prompt for this character.
+     * @note Mapped to `negative_prompt` in the API request body.
+     */
     negative: string;
     /** X coordinate for region placement */
     x: number;
@@ -32,71 +85,122 @@ export interface CharacterPrompt {
 // ── Generate input base (common fields shared by all generate actions) ──
 
 export interface GenerateInputBase {
-    /** Image model (e.g. "nai-diffusion-4-5-full", "nai-diffusion-4-5-curated") */
-    model: string;
+    /**
+     * Image model identifier.
+     * @default "nai-diffusion-4-5-full"
+     * @see {@link MODELS} for well-known model IDs.
+     */
+    model: ModelId;
     /** Text prompt (positive) */
     prompt: string;
-    /** Negative prompt */
+    /** Negative / undesired content prompt. */
     negativePrompt?: string;
-    /** Image width (default 1024) */
+    /**
+     * Output image width in pixels.
+     * @default 1024
+     */
     width?: number;
-    /** Image height (default 1024) */
+    /**
+     * Output image height in pixels.
+     * @default 1024
+     */
     height?: number;
-    /** Number of samples (1-16, default 1) */
+    /**
+     * Number of images to generate (1–16).
+     * @default 1
+     */
     samples?: number;
-    /** Random seed. Omit for random. */
+    /**
+     * Random seed. Omit for server-side random assignment.
+     * @see {@link randomSeed} to generate a client-side seed.
+     */
     seed?: number;
-    /** Inference steps (default 28) */
+    /**
+     * Inference steps (1–100). Higher = more detail but slower.
+     * @default 28
+     */
     steps?: number;
-    /** CFG scale (0-30, default 5) */
+    /**
+     * CFG (Classifier-Free Guidance) scale (0–30).
+     * Higher = stricter prompt adherence.
+     * @default 5
+     */
     scale?: number;
-    /** CFG rescale (0-1, default 0) */
+    /**
+     * CFG rescale amount (0–1).
+     * @default 0
+     */
     cfgRescale?: number;
-    /** Unconditional scale (0-10, default 1) */
+    /**
+     * Unconditional guidance scale (0–10).
+     * @default 1
+     */
     uncondScale?: number;
-    /** Sampler (default "k_euler_ancestral") */
-    sampler?: string;
-    /** Noise schedule (default "native") */
-    noiseSchedule?: string;
-    /** UC preset (0-7, default 0) */
+    /**
+     * Sampler algorithm.
+     * @default "k_euler_ancestral"
+     * @see {@link SAMPLERS} for well-known sampler names.
+     */
+    sampler?: SamplerName;
+    /**
+     * Noise schedule.
+     * @default "native"
+     * @see {@link NOISE_SCHEDULES} for well-known schedule names.
+     */
+    noiseSchedule?: NoiseScheduleName;
+    /**
+     * UC (Unconditional Conditioning) preset (0–7).
+     * @default 0
+     */
     ucPreset?: number;
-    /** img2img strength (0-1, default 0.6) */
+    /**
+     * img2img strength (0–1). Higher = more deviation from input.
+     * @default 0.6
+     */
     strength?: number;
-    /** Noise amount (0-1, default 0) */
+    /**
+     * Noise level (0–1). Only applies to img2img/infill.
+     * @default 0
+     */
     noise?: number;
-    /** Enable quality toggle (default true) */
+    /** @default true */
     qualityToggle?: boolean;
-    /** Enable auto SMEA (default false) */
+    /** @default false */
     autoSmea?: boolean;
-    /** Enable SM (Smea) (default false) */
+    /** @default false */
     sm?: boolean;
-    /** Enable SM Dynamic thresholding (default false) */
+    /** @default false */
     smDyn?: boolean;
-    /** Enable decrisper (default false) */
+    /** @default false */
     decrisper?: boolean;
-    /** Prefer brownian noise (default false) */
+    /** @default false */
     preferBrownian?: boolean;
-    /** Add original image to output (default false) */
+    /** @default false */
     addOriginal?: boolean;
-    /** Use legacy v3 model path (default false) */
+    /** @default false */
     legacyV3?: boolean;
-    /** Use legacy UC (default false) */
+    /** @default false */
     legacyUc?: boolean;
-    /** Enable variety plus (default false) */
+    /** @default false */
     varietyPlus?: boolean;
-    /** Normalize vibes (default true) */
+    /** @default true */
     normalizeVibes?: boolean;
-    /** Use coordinates for region control (default false) */
+    /** @default false */
     useCoords?: boolean;
-    /** Use ordering for region control (default false) */
+    /** @default false */
     useOrder?: boolean;
-    /** Image format for the response */
+    /**
+     * Output image format.
+     * @default "png" (API default)
+     */
     imageFormat?: ImageFormat;
-    /** Streaming type */
+    /**
+     * Streaming mode. When set, response is streamed as msgpack or SSE.
+     */
     stream?: StreamingType;
-    /** Character prompts for region control */
+    /** Region-controlled character prompts. */
     characters?: CharacterPrompt[];
-    /** Extra parameters forwarded to the API as-is */
+    /** Extra parameters forwarded to the API as-is (advanced use). */
     extraParameters?: Record<string, unknown>;
 }
 
@@ -128,45 +232,57 @@ export type AnyGenerateInput = GenerateInput | Img2ImgInput | InfillInput;
 
 // ── Upscale ──
 export interface UpscaleInput {
-    /** Input image to upscale */
+    /** Input image to upscale (Uint8Array) */
     image: Uint8Array;
-    /** Upscale factor (e.g. 2, 4) */
+    /**
+     * Upscale factor.
+     * @default 2
+     */
     scale?: number;
-    /** Model override */
-    model?: string;
+    /**
+     * Model override.
+     * @default "nai-diffusion-4-5-full"
+     */
+    model?: ModelId;
 }
 
 // ── Augment (Director Tools) ──
 export interface AugmentInput {
     /** Director tool type (e.g. "draw", "inpaint") */
     reqType: string;
-    /** Input image */
+    /** Input image (Uint8Array) */
     image: Uint8Array;
     /** Text prompt */
     prompt?: string;
-    /** Output width */
+    /** Output width in pixels */
     width?: number;
-    /** Output height */
+    /** Output height in pixels */
     height?: number;
-    /** Defry (despeckle) amount (integer) */
+    /** Defry / despeckle amount (integer) */
     defry?: number;
 }
 
 // ── Encode Vibe ──
 export interface EncodeVibeInput {
-    /** Input image */
+    /** Input image (Uint8Array) */
     image: Uint8Array;
-    /** Model */
-    model: string;
-    /** How much information to extract (0-1) */
+    /**
+     * Model to use for vibe extraction.
+     * @default "nai-diffusion-4-5-curated"
+     */
+    model: ModelId;
+    /**
+     * How much information to extract (0–1).
+     * @default 0.5
+     */
     informationExtracted: number;
-    /** Whether to crop image to mask bounds */
+    /** Whether to crop input image to the mask bounds. */
     cropToMask?: boolean;
-    /** Focus seed */
+    /** Focus seed for extraction. */
     focusSeed?: number;
-    /** Information extraction seed */
+    /** Information extraction seed. */
     infoExtractSeed?: number;
-    /** Optional mask */
+    /** Optional mask (Uint8Array) to constrain extraction area. */
     mask?: Uint8Array;
 }
 

@@ -19,6 +19,7 @@ const testConfig: Config["test"] = {
         enabled: true,
         exclude: [
             "src/schemas/index.ts", // barrel re-export: pulls in schema files, skews per-file %
+            "src/types.ts", // static data constants (MODELS, SAMPLERS, etc.) — no logic to test
             "src/validate.ts", // dynamic await import() in TLA; V8 cannot track coverage. Tested indirectly via validate.test.ts (4 tests)
         ],
         include: ["src/**/*.ts"],

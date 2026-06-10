@@ -28,71 +28,71 @@ export const CharacterPromptSchema = z.object({
 
 /** Shared validation for all generate action types */
 const GenerateInputBaseSchema = z.object({
-    /** Model ID (e.g. "nai-diffusion-4-5-full") */
+    /** @default "nai-diffusion-4-5-full" {@link MODELS} */
     model: z.string().min(1),
     /** Text prompt (positive) */
     prompt: z.string(),
-    /** Negative prompt */
+    /** Negative / undesired content prompt. */
     negativePrompt: z.string().optional(),
-    /** Image width (default 1024) */
+    /** @default 1024 */
     width: z.number().int().positive().optional(),
-    /** Image height (default 1024) */
+    /** @default 1024 */
     height: z.number().int().positive().optional(),
-    /** Number of images (1–16, default 1) */
+    /** @default 1 */
     samples: z.number().int().min(1).max(16).optional(),
-    /** Seed (omit for server-side random) */
+    /** Omit for server-side random assignment. */
     seed: z.number().int().optional(),
-    /** Inference steps (1–100, default 28) */
+    /** @default 28 */
     steps: z.number().int().min(1).max(100).optional(),
-    /** CFG scale (0–30, default 5) */
+    /** @default 5 */
     scale: z.number().min(0).max(30).optional(),
-    /** CFG rescale (0–1, default 0) */
+    /** @default 0 */
     cfgRescale: z.number().min(0).max(1).optional(),
-    /** Unconditional scale (0–10, default 1) */
+    /** @default 1 */
     uncondScale: z.number().min(0).max(10).optional(),
-    /** Sampler name (default "k_euler_ancestral") */
+    /** @default "k_euler_ancestral" {@link SAMPLERS} */
     sampler: z.string().optional(),
-    /** Noise schedule (default "native") */
+    /** @default "native" {@link NOISE_SCHEDULES} */
     noiseSchedule: z.string().optional(),
-    /** UC preset (0–7, default 0) */
+    /** @default 0 */
     ucPreset: z.number().int().min(0).max(7).optional(),
-    /** img2img strength (0–1, default 0.6) */
+    /** @default 0.6 */
     strength: z.number().min(0).max(1).optional(),
-    /** Noise amount (0–1, default 0) */
+    /** @default 0 */
     noise: z.number().min(0).max(1).optional(),
-    /** Quality toggle (default true) */
+    /** @default true */
     qualityToggle: z.boolean().optional(),
-    /** Auto SMEA (default false) */
+    /** @default false */
     autoSmea: z.boolean().optional(),
-    /** SM (Smea) (default false) */
+    /** @default false */
     sm: z.boolean().optional(),
-    /** SM dynamic thresholding (default false) */
+    /** @default false */
     smDyn: z.boolean().optional(),
-    /** Decrisper (default false) */
+    /** @default false */
     decrisper: z.boolean().optional(),
-    /** Prefer brownian noise (default false) */
+    /** @default false */
     preferBrownian: z.boolean().optional(),
-    /** Add original (default false) */
+    /** @default false */
     addOriginal: z.boolean().optional(),
-    /** Legacy v3 (default false) */
+    /** @default false */
     legacyV3: z.boolean().optional(),
-    /** Legacy UC (default false) */
+    /** @default false */
     legacyUc: z.boolean().optional(),
-    /** Variety plus (default false) */
+    /** @default false */
     varietyPlus: z.boolean().optional(),
-    /** Normalize vibes (default true) */
+    /** @default true */
     normalizeVibes: z.boolean().optional(),
-    /** Use coords (default false) */
+    /** @default false */
     useCoords: z.boolean().optional(),
-    /** Use order (default false) */
+    /** @default false */
     useOrder: z.boolean().optional(),
-    /** Output image format */
+    /** @default "png" (API default) */
     imageFormat: ImageFormatSchema.optional(),
-    /** Streaming type */
+    /** When set, enables streaming response. */
     stream: StreamingTypeSchema.optional(),
-    /** Region-controlled character prompts */
+    /** Region-controlled character prompts. */
     characters: z.array(CharacterPromptSchema).optional(),
-    /** Extra API parameters (forwarded as-is) */
+    /** Extra API parameters forwarded as-is (advanced use). */
     extraParameters: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -131,7 +131,9 @@ export const GenerateInputSchema = z.discriminatedUnion("action", [
 /** Image upscaling input */
 export const UpscaleInputSchema = z.object({
     image: z.instanceof(Uint8Array),
+    /** @default 2 */
     scale: z.number().optional(),
+    /** @default "nai-diffusion-4-5-full" */
     model: z.string().optional(),
 });
 
@@ -152,7 +154,9 @@ export const AugmentInputSchema = z.object({
 /** Vibe encoding input: extracts "vibe" from a reference image */
 export const EncodeVibeInputSchema = z.object({
     image: z.instanceof(Uint8Array),
+    /** @default "nai-diffusion-4-5-curated" */
     model: z.string(),
+    /** @default 0.5 */
     informationExtracted: z.number().min(0).max(1),
     cropToMask: z.boolean().optional(),
     focusSeed: z.number().int().optional(),
